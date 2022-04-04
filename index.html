@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bad idea</title>
+    <script src="./elements.js" type="module"></script>
+  </head>
+  <body>
+    <html-val name="name">bree</html-val>
+
+    <template is="html-element" name="style-test">
+      <html-color red>
+        <slot><html-val name="name" /></slot>
+      </html-color>
+    </template>
+
+    <style-test></style-test>
+
+    <style-test>hello</style-test>
+
+    <html-val name="location host"></html-val>
+  </body>
+</html>
