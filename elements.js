@@ -1,4 +1,6 @@
-export const defines = (globalThis["defines"] = new Map([
+export const HTMLDefines = Symbol("html scope defines");
+
+export const defines = (globalThis[HTMLDefines] = new Map([
   ["global", globalThis],
   ["location", globalThis.location],
   ["url", globalThis.location],
