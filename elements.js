@@ -26,27 +26,41 @@ customElements.define(
     constructor() {
       super();
 
-      const scope = defines;
       const name = this.getAttribute("name");
+      const attr = this.getAttribute("attr");
+      const scope = attr != null ? this.parentElement : defines;
 
-      if (!name) {
-        throw new Error("Attribute name required!");
+      if (name != null && attr != null) {
+        throw new Error("Only one attribute `name` or `attr` can be defined.");
       }
+
+      if (!name && !attr) {
+        throw new Error("Attributes `name` or `attr` are required!");
+      }
+
+      const query = name ?? attr;
 
       if (this.hasChildNodes()) {
         const fragment = document.createDocumentFragment();
         fragment.append.apply(fragment, this.childNodes);
-        scope.set(name, fragment);
+        scope.set(query, fragment);
         this.remove();
       } else {
-        let content = getDeepQuery(scope, name);
+        let content = getDeepQuery(scope, query) ?? "";
 
         if (content instanceof Node) content = content.cloneNode(true);
         this.replaceWith(content);
       }
     }
-  }
+  },
 );
+
+class LifecycleEvent extends Event {
+  constructor(type, data = {}, eventInitDict = undefined) {
+    super(type, eventInitDict);
+    Object.assign(this, data);
+  }
+}
 
 customElements.define(
   "html-element",
@@ -58,6 +72,9 @@ customElements.define(
     defineCustomElement() {
       const template = this;
       const elementName = template.getAttribute("name");
+      const observedAttributes =
+        template.getAttribute("observed-attributes")?.split(",")
+          .map((attr) => attr.trim()) ?? [];
 
       if (!elementName) {
         throw new Error("name must be defined");
@@ -66,18 +83,43 @@ customElements.define(
       customElements.define(
         elementName,
         class extends HTMLElement {
+          static get observedAttributes() {
+            return observedAttributes;
+          }
+
           constructor() {
             super();
-            template.content;
             this.attachShadow({ mode: "open" }).appendChild(
-              template.content.cloneNode(true)
+              template.content.cloneNode(true),
             );
           }
-        }
+
+          connectedCallback() {
+            this.dispatchEvent(new LifecycleEvent("connected"));
+          }
+
+          disconnectedCallback() {
+            this.dispatchEvent(new LifecycleEvent("disconnected"));
+          }
+
+          adoptedCallback() {
+            this.dispatchEvent(new LifecycleEvent("adopted"));
+          }
+
+          attributeChangedCallback(name, oldValue, newValue) {
+            this.dispatchEvent(
+              new LifecycleEvent("attributechanged", {
+                name,
+                oldValue,
+                newValue,
+              }),
+            );
+          }
+        },
       );
     }
   },
-  { extends: "template" }
+  { extends: "template" },
 );
 
 const el = document.createElement("span");
@@ -86,7 +128,7 @@ const el = document.createElement("span");
 const toKebabCase = (str) =>
   str.replace(
     /[A-Z]+(?![a-z])|[A-Z]/g,
-    ($, ofs) => (ofs ? "-" : "") + $.toLowerCase()
+    ($, ofs) => (ofs ? "-" : "") + $.toLowerCase(),
   );
 
 Object.keys(el.style)
@@ -103,6 +145,6 @@ Object.keys(el.style)
 
           this.style.setProperty(name, value);
         }
-      }
+      },
     );
   });
